@@ -22,8 +22,22 @@ class MyState(TypedDict):
 
 def detect_intent(state):
     user_input = state["user_input"]
+    prompt = f"""
+    You are an email intent detection assistant. Your task is to understand what type of email the user wants to write and output a **single intent** word like: complaint, thank you, inquiry, invitation, request, congratulations, or a new one if needed.
+
+    Guidelines:
+    - If the user's input clearly matches one of the examples (complaint, thank you, inquiry, invitation, request, congratulations), use it.
+    - If not, **generate a new suitable one-word intent** that best represents the user's goal (e.g., "feedback", "follow-up", "recommendation", "apology").
+    - Respond ONLY with a single word with first letter capitalized. No extra text or punctuation.
+
+    User input:
+    \"\"\"{user_input}\"\"\"
+
+    Your response:
+    """
+
     messages = [
-        SystemMessage(content="Extract the intent only. Some of the examples of intent are: complaint, thank you, inquiry, invitation. Respond only with the intent word which may not be listed in the example too."),
+        SystemMessage(content=prompt),
         HumanMessage(content=user_input)
     ]
     response = st.session_state.llm.invoke(messages)
@@ -31,15 +45,54 @@ def detect_intent(state):
     return state 
 
 def generate_email(state):
-    detected_intent = state["detected_intent"]
+    detected_intent = state["detected_intent"].strip().lower()
+    user_input = state["user_input"]
+    formal_intents = ["complaint", "inquiry", "request"]
+    friendly_intents = ["thank you", "invitation", "congratulations"]
+
+    if detected_intent in formal_intents:
+        tone = "formal"
+    elif detected_intent in friendly_intents:
+        tone = "friendly and warm"
+    else:
+        tone = "neutral"
+
+    prompt = f"""
+    You are an expert email assistant. Write a well-structured email based on the following intent and description.
+
+    Intent: {detected_intent.capitalize()}
+    Description: {user_input}
+
+    Instructions:
+    - Use a {tone} tone.
+    - Include a subject line that summarizes the email.
+    - Start with a greeting (e.g., Dear [Recipient],).
+    - End with an appropriate closing such as 'Best regards' or 'Yours sincerely'.
+    - Add a line break after the closing, then write [Your Name] on the next line.
+    - Make sure to use correct spacing and punctuation.
+    - Do NOT include the phrase 'Intent:' or 'Description:' in the final email.
+    - Your response should start exactly with: 'Here is a draft email based on your prompt:'
+
+    Example:
+
+    Intent: Thank you
+    Description: Thank the customer for their purchase.
+
+    Here is a draft email based on your prompt:
+    Subject: Thank You for Your Purchase
+
+    Dear Customer,
+
+    Thank you very much for your recent purchase. We appreciate your business.
+
+    Best regards,\n
+    [Your Name]
+
+    Now, please generate the email below:
+    """
+    
     messages = [
-        SystemMessage(content = """
-        Write an email using the given intent and description.
-        Include a subject, greeting, body, and a suitable closing like 'Best regards' or 'Yours sincerely'.                  
-        Add a line break after the closing, then write [Your Name] on the next line.
-        Keep the email clear and well-formatted. Make it short or detailed as needed. 
-        Start your reply with: 'Here is a draft email based on your prompt:'
-        """),
+        SystemMessage(content = prompt),
         HumanMessage(f"Intent: {detected_intent} \n Description : {state['user_input']}")
     ]
     response = st.session_state.llm.invoke(messages)
