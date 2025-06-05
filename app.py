@@ -5,6 +5,7 @@ from langchain_core.runnables import RunnableLambda
 from langchain_ollama.llms import OllamaLLM
 from langchain_core.messages import HumanMessage, SystemMessage
 import streamlit as st
+from IPython.display import Image, display
 
 st.set_page_config(page_title="EmailGenAI", page_icon=":envelope_with_arrow:")
 
@@ -23,12 +24,12 @@ class MyState(TypedDict):
 def detect_intent(state):
     user_input = state["user_input"]
     prompt = f"""
-    You are an email intent detection assistant. Your task is to understand what type of email the user wants to write and output a **single intent** word like: complaint, thank you, inquiry, invitation, request, congratulations, or a new one if needed.
+    You are an email intent detection assistant. Your task is to understand what type of email the user wants to write and output a ** single or two word intent** word like: Complaint, Thank You, Inquiry, Invitation, Request, Congratulations, or a new one if needed.
 
     Guidelines:
-    - If the user's input clearly matches one of the examples (complaint, thank you, inquiry, invitation, request, congratulations), use it.
-    - If not, **generate a new suitable one-word intent** that best represents the user's goal (e.g., "feedback", "follow-up", "recommendation", "apology").
-    - Respond ONLY with a single word with first letter capitalized. No extra text or punctuation.
+    - If the user's input clearly matches one of the examples (Complaint, Thank You, Inquiry, Invitation, Request, Congratulations), use it.
+    - If not, **generate a new suitable intent** that best represents the user's goal (e.g., "Feedback", "Follow-Up", "Recommendation", "Apology").
+    - **Respond with a SINGLE word or TWO words if necessary** with first letter capitalized. No extra text or punctuation.
 
     User input:
     \"\"\"{user_input}\"\"\"
@@ -134,5 +135,7 @@ if st.button("Generate") and user_prompt:
         st.write(result["detected_intent"])
         st.subheader("Generated Email")
         st.write(result["generated_email"])
+
+        st.download_button(label="Download Email", file_name="generated_email.txt", data = result["generated_email"].replace("Here is a draft email based on your prompt:\n\n", ""))
 
 
