@@ -6,9 +6,9 @@ from langchain_ollama.llms import OllamaLLM
 from langchain_core.messages import HumanMessage, SystemMessage
 import streamlit as st
 
-st.set_page_config(page_title="EmailGenAI", page_icon=":e-mail:")
+st.set_page_config(page_title="EmailGenAI", page_icon=":envelope_with_arrow:")
 
-st.header("Email Generator with Intent Detection")
+st.header("Email Generator with Intent Detection :mailbox_with_mail:")
 user_prompt = st.text_input(label="Describe the email you want to generate: ")
 
 if "llm" not in st.session_state:
