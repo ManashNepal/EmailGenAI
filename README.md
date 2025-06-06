@@ -1,13 +1,28 @@
-# Email Generator with Intent Detection
+# 📧 EmailGenAI - Email Generator with Intent Detection
 
-An interactive Streamlit app that uses LangGraph and Ollama LLM to detect the intent from user input and generate a well-structured email draft accordingly.
+EmailGenAI is a smart email-writing assistant that uses AI to detect your intent and generate a complete, editable email. Built with **Streamlit**, **LangGraph**, **LangChain**, and **Ollama's LLaMA 3 model**, the app allows users to quickly create formal or casual emails by simply describing what they want to write.
 
 ---
 
-## Features
+## 🔍 Features
 
-- Detects user intent from a natural language description (e.g., complaint, thank you, inquiry, invitation, etc.)
-- Generates a clear, concise, and well-formatted email based on the detected intent and user description.
-- Uses OpenAI-style prompt engineering with Ollama LLM (`llama3:8b` model).
-- Implements a state graph workflow with LangGraph for modular and maintainable code.
-- Easy to use, interactive web interface built with Streamlit.
+- **Intent Detection**: Automatically identifies the purpose of the email (e.g., Request, Complaint, Thank You).
+- **AI Email Drafting**: Generates emails based on user intent and description.
+- **Editable Output**: Review and edit the email before sending.
+- **Email Sending**: Uses Gmail SMTP integration via Yagmail to send the final email.
+- **LLM-Powered Workflow**: Modular, node-based pipeline with LangGraph.
+
+---
+
+## 🧠 Tech Stack
+
+- **Frontend**: Streamlit
+- **LLM**: LLaMA 3 (8B via Ollama)
+- **Backend Workflow**: LangGraph + LangChain
+- **Email Service**: Yagmail + Gmail SMTP
+- **Environment**: Python + dotenv
+
+---
+
+
+
