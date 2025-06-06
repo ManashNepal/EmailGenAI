@@ -1,14 +1,11 @@
-# Email Generator With Intent Detection
-from typing import TypedDict, Optional
-from langgraph.graph import StateGraph
-from langchain_core.runnables import RunnableLambda
-from langchain_ollama.llms import OllamaLLM
-from langchain_core.messages import HumanMessage, SystemMessage
 import streamlit as st
-import yagmail
-from dotenv import load_dotenv
 import os
-import re
+from dotenv import load_dotenv
+from langchain_ollama.llms import OllamaLLM
+
+from email_flow import graph
+from utils import parse_subject, parse_body
+from email_sender import send_email
 
 load_dotenv()
 
@@ -23,46 +20,43 @@ user_prompt = st.text_input(label="Describe the email you want to generate: ")
 if "llm" not in st.session_state:
     st.session_state.llm = OllamaLLM(model="llama3:8b")
 
-
-if st.button("Generate", key = "generate_button") and user_prompt:
+if st.button("Generate", key="generate_button") and user_prompt:
     with st.spinner("Generating"):
         state = {
-            "user_input" : user_prompt
-        }       
+            "user_input": user_prompt
+        }
         result = graph.invoke(state)
         st.session_state.detected_intent = result["detected_intent"]
         st.session_state.generated_email = result["generated_email"]
 
 if "generated_email" in st.session_state:
-    subject_match = re.search(r"Subject:\s*(.+)", st.session_state.generated_email)
-    email_subject = subject_match.group(1).strip() if subject_match else ""
+    email_subject = parse_subject(st.session_state.generated_email)
+    email_body = parse_body(st.session_state.generated_email)
 
-    body_match = re.search(r"(Dear\s.+)", st.session_state.generated_email, re.DOTALL)
-    email_body = body_match.group(1).strip() if body_match else ""
     st.subheader("Detected Intent")
     st.write(st.session_state.detected_intent)
+
     st.subheader("Edit The Generated Email:")
     edited_email = st.text_area(
         "Edit the email before sending",
         value=email_body,
         height=500,
         key="editable_email_area"
-        )
+    )
     st.session_state.editable_email = edited_email
+
     recipient_mail = st.text_input("Enter the recipient mail: ")
+
     if st.button("Send Mail", key="send_button"):
         with st.spinner("Sending"):
             try:
-                
-                yag = yagmail.SMTP(user="manash.nepal111@gmail.com", password="gaml afjo zege mgtf")
-                yag.send(
-                    to=recipient_mail, 
-                    subject=email_subject, 
-                    contents=edited_email)
+                send_email(
+                    EMAIL_ADDRESS,
+                    EMAIL_APP_PASSWORD,
+                    recipient_mail,
+                    email_subject,
+                    edited_email,
+                )
                 st.success("Email Sent Successfully!")
-            except Exception  as e:
-                st.warning(f"Unable To Send Mail : {e}!")
-            
-        # st.download_button(label="Download Email", file_name="generated_email.txt", data = result["generated_email"].replace("Here is a draft email based on your prompt:\n\n", ""))
-
-
+            except Exception as e:
+                st.warning(f"Unable To Send Mail: {e}!")
