@@ -8,6 +8,7 @@ import streamlit as st
 import yagmail
 from dotenv import load_dotenv
 import os
+import re
 
 load_dotenv()
 
@@ -31,15 +32,17 @@ class MyState(TypedDict):
 def detect_intent(state):
     user_input = state["user_input"]
     prompt = f"""
-    You are an email intent detection assistant. Your task is to understand what type of email the user wants to write and output a ** single or two word intent** word like: Complaint, Thank You, Inquiry, Invitation, Request, Congratulations, or a new one if needed.
+    You are an email intent detection assistant. Your task is to understand what type of email the user wants to write and output an intent phrase consisting of either a single word or exactly two words (separated by a single space), such as: Complaint, Thank You, Inquiry, Invitation, Request, Congratulations, or another appropriate intent.
 
     Guidelines:
-    - If the user's input clearly matches one of the examples (Complaint, Thank You, Inquiry, Invitation, Request, Congratulations), use it.
-    - If not, **generate a new suitable intent** that best represents the user's goal (e.g., "Feedback", "Follow-Up", "Recommendation", "Apology").
-    - **Respond with a SINGLE word or TWO words if necessary** with first letter capitalized. No extra text or punctuation.
+    - If the user's input clearly matches one of the examples (Complaint, Thank You, Inquiry, Invitation, Request, Congratulations), use that exact phrase.
+    - If not, generate a new suitable intent phrase that best represents the user's goal (e.g., Feedback, Follow Up, Recommendation, Apology).
+    - Respond with ONE or TWO words only, capitalizing the first letter of each word.
+    - Two-word intents must be separated by a single space; do NOT join the words together or use camel case (e.g., "Request Again", NOT "RequestAgain").
+    - Do NOT include any extra text, explanation, punctuation, or quotes—only the intent phrase.
 
     User input:
-    \"\"\"{user_input}\"\"\"
+    {user_input}
 
     Your response:
     """
@@ -106,20 +109,14 @@ def generate_email(state):
     response = st.session_state.llm.invoke(messages)
     state["generated_email"] = response
     return state
+    
 
 def start_node(state):
     return state
 
 def end_node(state):
     return state
-
-def send_mail(recipient_email, subject, content):
-    try:
-        yag = yagmail.SMTP(user=EMAIL_ADDRESS, password=EMAIL_APP_PASSWORD)
-        yag.send(to=recipient_email, subject=subject, content=content)
-        return True
-    except Exception  as e:
-        return False
+    
     
 # Creating Nodes
 
@@ -140,17 +137,45 @@ builder.set_finish_point("end")
 graph = builder.compile()
 
 
-if st.button("Generate") and user_prompt:
+if st.button("Generate", key = "generate_button") and user_prompt:
     with st.spinner("Generating"):
         state = {
             "user_input" : user_prompt
         }       
         result = graph.invoke(state)
-        st.subheader("Detected Intent")
-        st.write(result["detected_intent"])
-        st.subheader("Generated Email")
-        st.write(result["generated_email"])
+        st.session_state.detected_intent = result["detected_intent"]
+        st.session_state.generated_email = result["generated_email"]
 
-        st.download_button(label="Download Email", file_name="generated_email.txt", data = result["generated_email"].replace("Here is a draft email based on your prompt:\n\n", ""))
+if "generated_email" in st.session_state:
+    subject_match = re.search(r"Subject:\s*(.+)", st.session_state.generated_email)
+    email_subject = subject_match.group(1).strip() if subject_match else ""
+
+    body_match = re.search(r"(Dear\s.+)", st.session_state.generated_email, re.DOTALL)
+    email_body = body_match.group(1).strip() if body_match else ""
+    st.subheader("Detected Intent")
+    st.write(st.session_state.detected_intent)
+    st.subheader("Edit The Generated Email:")
+    edited_email = st.text_area(
+        "Edit the email before sending",
+        value=email_body,
+        height=500,
+        key="editable_email_area"
+        )
+    st.session_state.editable_email = edited_email
+    recipient_mail = st.text_input("Enter the recipient mail: ")
+    if st.button("Send Mail", key="send_button"):
+        with st.spinner("Sending"):
+            try:
+                
+                yag = yagmail.SMTP(user="manash.nepal111@gmail.com", password="gaml afjo zege mgtf")
+                yag.send(
+                    to=recipient_mail, 
+                    subject=email_subject, 
+                    contents=edited_email)
+                st.success("Email Sent Successfully!")
+            except Exception  as e:
+                st.warning(f"Unable To Send Mail : {e}!")
+            
+        # st.download_button(label="Download Email", file_name="generated_email.txt", data = result["generated_email"].replace("Here is a draft email based on your prompt:\n\n", ""))
 
 
