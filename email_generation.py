@@ -1,62 +1,57 @@
+from langchain_core.messages import HumanMessage, SystemMessage
 import streamlit as st
-import os
-from dotenv import load_dotenv
-from langchain_ollama.llms import OllamaLLM
 
-from email_flow import graph
-from utils import parse_subject, parse_body
-from email_sender import send_email
+def generate_email(state):
+    detected_intent = state["detected_intent"].strip().lower()
+    user_input = state["user_input"]
+    formal_intents = ["complaint", "inquiry", "request"]
+    friendly_intents = ["thank you", "invitation", "congratulations"]
 
-load_dotenv()
+    if detected_intent in formal_intents:
+        tone = "formal"
+    elif detected_intent in friendly_intents:
+        tone = "friendly and warm"
+    else:
+        tone = "neutral"
 
-EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")
-EMAIL_APP_PASSWORD = os.getenv("EMAIL_APP_PASSWORD")
+    prompt = f"""
+    You are an expert email assistant. Write a well-structured email based on the following intent and description.
 
-st.set_page_config(page_title="EmailGenAI", page_icon=":envelope_with_arrow:")
+    Intent: {detected_intent.capitalize()}
+    Description: {user_input}
 
-st.header("Email Generator with Intent Detection :mailbox_with_mail:")
-user_prompt = st.text_input(label="Describe the email you want to generate: ")
+    Instructions:
+    - Use a {tone} tone.
+    - Include a subject line that summarizes the email.
+    - Start with a greeting (e.g., Dear [Recipient],).
+    - End with an appropriate closing such as 'Best regards' or 'Yours sincerely'.
+    - Add a line break after the closing, then write [Your Name] on the next line.
+    - Make sure to use correct spacing and punctuation.
+    - Do NOT include the phrase 'Intent:' or 'Description:' in the final email.
+    - Your response should start exactly with: 'Here is a draft email based on your prompt:'
 
-if "llm" not in st.session_state:
-    st.session_state.llm = OllamaLLM(model="llama3:8b")
+    Example:
 
-if st.button("Generate", key="generate_button") and user_prompt:
-    with st.spinner("Generating"):
-        state = {
-            "user_input": user_prompt
-        }
-        result = graph.invoke(state)
-        st.session_state.detected_intent = result["detected_intent"]
-        st.session_state.generated_email = result["generated_email"]
+    Intent: Thank you
+    Description: Thank the customer for their purchase.
 
-if "generated_email" in st.session_state:
-    email_subject = parse_subject(st.session_state.generated_email)
-    email_body = parse_body(st.session_state.generated_email)
+    Here is a draft email based on your prompt:
+    Subject: Thank You for Your Purchase
 
-    st.subheader("Detected Intent")
-    st.write(st.session_state.detected_intent)
+    Dear Customer,
 
-    st.subheader("Edit The Generated Email:")
-    edited_email = st.text_area(
-        "Edit the email before sending",
-        value=email_body,
-        height=500,
-        key="editable_email_area"
-    )
-    st.session_state.editable_email = edited_email
+    Thank you very much for your recent purchase. We appreciate your business.
 
-    recipient_mail = st.text_input("Enter the recipient mail: ")
+    Best regards,\n
+    [Your Name]
 
-    if st.button("Send Mail", key="send_button"):
-        with st.spinner("Sending"):
-            try:
-                send_email(
-                    EMAIL_ADDRESS,
-                    EMAIL_APP_PASSWORD,
-                    recipient_mail,
-                    email_subject,
-                    edited_email,
-                )
-                st.success("Email Sent Successfully!")
-            except Exception as e:
-                st.warning(f"Unable To Send Mail: {e}!")
+    Now, please generate the email below:
+    """
+    
+    messages = [
+        SystemMessage(content = prompt),
+        HumanMessage(f"Intent: {detected_intent} \n Description : {state['user_input']}")
+    ]
+    response = st.session_state.llm.invoke(messages)
+    state["generated_email"] = response
+    return state
