@@ -5,7 +5,14 @@ from langchain_core.runnables import RunnableLambda
 from langchain_ollama.llms import OllamaLLM
 from langchain_core.messages import HumanMessage, SystemMessage
 import streamlit as st
-from IPython.display import Image, display
+import yagmail
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")
+EMAIL_APP_PASSWORD = os.getenv("EMAIL_APP_PASSWORD")
 
 st.set_page_config(page_title="EmailGenAI", page_icon=":envelope_with_arrow:")
 
@@ -106,6 +113,14 @@ def start_node(state):
 def end_node(state):
     return state
 
+def send_mail(recipient_email, subject, content):
+    try:
+        yag = yagmail.SMTP(user=EMAIL_ADDRESS, password=EMAIL_APP_PASSWORD)
+        yag.send(to=recipient_email, subject=subject, content=content)
+        return True
+    except Exception  as e:
+        return False
+    
 # Creating Nodes
 
 builder = StateGraph(state_schema=MyState)
